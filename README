@@ -1,0 +1,89 @@
+= acts_as_struct
+
+データベースのスキーマの変更なしにモデルにフィールドを追加するプラグインです。
+
+== インストール
+
+  ./script/plugin install <plugin URL>
+
+<plugin URL>にはacts_as_structが公開されているリポジトリURLを指定します。
+
+
+== 初期設定
+
+acts_as_structのためのマイグレーションファイルを作成します。
+
+  script/generate migration AddStructMembers
+
+できたファイルを以下のように編集します。
+
+  class AddStructMembers < ActiveRecord::Migration
+    def self.up
+      create_table "struct_members", :force => true do |t|
+        t.integer "struct_id",                 :default => 0,  :null => false
+        t.string  "struct_type", :limit => 50, :default => "", :null => false
+        t.string  "name",        :limit => 50, :default => "", :null => false
+        t.string  "value_type",  :limit => 50, :default => "", :null => false
+        t.binary  "value"
+      end
+
+      add_index "struct_members", ["struct_id", "struct_type", "name"],
+                :name=>"struct_memebers_id_type_name_index"
+    end
+
+    def self.down
+      drop_table "struct_members"
+    end
+  end
+
+
+== 利用例
+
+=== フィールドの定義
+
+struct_memberメソッドでフィールドの定義をします。
+
+  struct_member フィールド名, データ型[, :default => デフォルト値]
+
+データ型にはinteger, float, boolean, string, text, binaryのほかに、
+YAMLクラスのようにdumpとloadメソッドを持つオブジェクトを指定できます。
+
+以下に、Userモデルにage, nickname, married, dataフィールドを追加する
+例を示します。ここではバリデーションも指定しています。
+(validates_uniqueness_ofのようにモデルのテーブルに問い合わせるような
+バリデーションは利用できません)
+
+  class User < ActiveRecord::Base
+    acts_as_struct
+
+    struct_member :age,      :integer
+    struct_member :nickname, :string
+    struct_member :married,  :boolean, :default => false
+    struct_member :data,     YAML
+
+    validates_format_of :nickname, :with => /\A[\w\s]+\z/
+  end
+
+
+=== アクセサ
+
+普通のフィールドと同様のアクセサが定義されます。
+
+以下は代入の例です。
+  
+  bob = User.new
+  bob.age = 18
+  bob.nickname = 'bob'
+  bob.data = Time.now
+
+保存します。
+
+  bob.save!
+
+以下は参照の例です。
+
+  u = User.find(bob.id)
+  u.age               #=> 18
+  u.nickname          #=> 'bob'
+  u.married?          #=> false (デフォルト値)
+  u.data.class        #=> Time
