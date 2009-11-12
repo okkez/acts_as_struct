@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 require File.join(File.dirname(__FILE__), 'spec_helper')
+require 'json'
 
 class Person < ActiveRecord::Base
   acts_as_struct
@@ -30,6 +31,12 @@ class Post < ActiveRecord::Base
   def set_dummy
     self.dummy = 'dummy'
   end
+end
+
+class Article < Post
+  acts_as_struct
+  struct_member :json, JSON, :default => { }
+  struct_member :yaml, YAML, :default => { }
 end
 
 class CommentCallback
@@ -90,6 +97,35 @@ describe Nifty::Acts::Struct do
       subject{ Comment.create!(:name => 'name') }
       its(:note){ should == 'note' }
       its(:dummy){ should == 'dummy' }
+    end
+  end
+  describe "JSON" do
+    describe "default value" do
+      subject{ Article.create!(:name => 'name')}
+      its(:json){ should == { } }
+      its(:yaml){ should == { } }
+    end
+    describe "set json value" do
+      before do
+        @article = Article.create!(:name => 'name')
+        @article.json = { :a => 1, :b => 2, :c => { :d => :e } }
+        @article.save!
+      end
+      it "json" do
+        @article.reload
+        @article.json.should == { "a" => 1, "b" => 2, "c" => { "d" => "e" } }
+      end
+    end
+    describe "set yaml value" do
+      before do
+        @article = Article.create!(:name => 'name')
+        @article.yaml = { :a => 1, :b => 2, :c => { :d => :e } }
+        @article.save!
+      end
+      it "yaml" do
+        @article.reload
+        @article.yaml.should == { :a => 1, :b => 2, :c => { :d => :e } }
+      end
     end
   end
 end

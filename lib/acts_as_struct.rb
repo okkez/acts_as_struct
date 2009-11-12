@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 module Nifty
   module Acts #:nodoc:
     module Struct #:nodoc:
@@ -70,6 +71,9 @@ module Nifty
             (value == "true" || value == "1") ? "true" : "false"
           when "text", "string", "binary"
             value.to_str rescue ""
+          when "JSON"
+            # NOTE: Rails2.3.4 のバグのため JSON.dump が使えない
+            ActiveSupport::JSON.encode(value)
           else
             value_type.dump(value)
           end
