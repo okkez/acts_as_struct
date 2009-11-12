@@ -1,4 +1,3 @@
-# ActsAsStruct
 module Nifty
   module Acts #:nodoc:
     module Struct #:nodoc:
@@ -10,15 +9,9 @@ module Nifty
         def acts_as_struct
           unless ancestors.include?(Nifty::Acts::Struct::InstanceMethods)
             has_many :struct_members, :as=>:struct, :dependent=>:destroy
-            extend Nifty::Acts::Struct::SingletonMethods
-            include Nifty::Acts::Struct::InstanceMethods
-
-            alias_method :after_save_without_struct_members, :after_save
-
-            define_method(:after_save) do
-              after_save_without_struct_members
-              struct_members.each{|st| st.save }
-            end
+            extend SingletonMethods
+            include InstanceMethods
+            after_save Callbacks.new
           end
         end
       end
@@ -26,7 +19,7 @@ module Nifty
       module SingletonMethods
         def struct_member(name, value_type, options={})
           name = name.to_s
-          
+
           define_method(name + "=") do |value|
             dumped_value = Nifty::Acts::Struct.dump(value_type, value)
             if atr = struct_members.detect{|a| a.name == name }
@@ -59,10 +52,16 @@ module Nifty
       module InstanceMethods
       end
 
-      class <<self
+      class Callbacks
+        def after_save(record)
+          record.struct_members.each(&:save!)
+        end
+      end
+
+      class << self
         def dump(value_type, value)
           case value_type.to_s
-          when "integer", "int" 
+          when "integer", "int"
             sprintf("%d", Integer(value)) rescue "0"
           when "float"
             sprintf("%e", Float(value)) rescue "0.0"
