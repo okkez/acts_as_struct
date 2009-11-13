@@ -39,6 +39,16 @@ class Article < Post
   struct_member :yaml, YAML, :default => { }
 end
 
+class News < Post
+  acts_as_struct
+  struct_member(:block, JSON, :default => { }) do |name, value_type, options|
+    define_method("#{name}?") do
+      struct_members.map(&:name).include?(name)
+    end
+  end
+  struct_member(:noblock, JSON, :default => { })
+end
+
 class CommentCallback
   def after_save(record)
     record.dummy = 'dummy'
@@ -99,7 +109,7 @@ describe Nifty::Acts::Struct do
       its(:dummy){ should == 'dummy' }
     end
   end
-  describe "JSON" do
+  describe "JSON/YAML" do
     describe "default value" do
       subject{ Article.create!(:name => 'name')}
       its(:json){ should == { } }
@@ -125,6 +135,28 @@ describe Nifty::Acts::Struct do
       it "yaml" do
         @article.reload
         @article.yaml.should == { :a => 1, :b => 2, :c => { :d => :e } }
+      end
+    end
+  end
+  describe "block" do
+    describe "when do not create sub record" do
+      before do
+        @news = News.create!(:name => 'name')
+      end
+      it "returns false" do
+        @news.block?.should be_false
+      end
+      it "raise NoMethodError" do
+        lambda{ @news.noblock? }.should raise_error(NoMethodError)
+      end
+    end
+    describe "when create sub record" do
+      before do
+        @news = News.create!(:name => 'name')
+        @news.block = { :options => { :foo => "bar" } }
+      end
+      it "returns false" do
+        @news.block?.should be_true
       end
     end
   end

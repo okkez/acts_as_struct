@@ -9,7 +9,7 @@ module Nifty
       module ClassMethods
         def acts_as_struct
           unless ancestors.include?(Nifty::Acts::Struct::InstanceMethods)
-            has_many :struct_members, :as=>:struct, :dependent=>:destroy
+            has_many :struct_members, :as => :struct, :dependent => :destroy
             extend SingletonMethods
             include InstanceMethods
             after_save Callbacks.new
@@ -18,7 +18,7 @@ module Nifty
       end
 
       module SingletonMethods
-        def struct_member(name, value_type, options={})
+        def struct_member(name, value_type, options = {})
           name = name.to_s
 
           define_method(name + "=") do |value|
@@ -47,6 +47,8 @@ module Nifty
           if %w(boolean bool).include?(value_type.to_s)
             alias_method name + "?", name
           end
+
+          yield name, value_type, options if block_given?
         end
       end
 
